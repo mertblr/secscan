@@ -16,4 +16,13 @@ async def scan(file: UploadFile):
     content = await file.read()
     text = content.decode("utf-8")
     lines = text.splitlines()
-    return {"filename": file.filename, "lines": lines}
+
+    packages = []                                        
+    for line in lines:                                   
+        line = line.strip()                             
+        if not line:                                     
+            continue                                    
+        name, version = line.split("==")                
+        packages.append({"name": name, "version": version}) 
+
+    return {"filename": file.filename, "packages": packages}  
