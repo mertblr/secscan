@@ -34,6 +34,16 @@ def extract_info(vuln):
     return {"cve": cve, "severity": severity, "summary": summary, "fixed_in": fixed_versions}
 
 
+def deduplicate(vulns):
+    unique = {}
+    for vuln in vulns:
+        info = extract_info(vuln)
+        cve = info["cve"]
+        if cve not in unique or unique[cve]["severity"] == "UNKNOWN":
+            unique[cve] = info
+    return list(unique.values())
+
+
 
 @app.get("/")
 def root():
@@ -62,13 +72,7 @@ async def scan(file: UploadFile):
             continue
         name, version = line.split("==")
         vulns = await query_osv(name, version)
-        unique = {}
-        for vuln in vulns:
-            info = extract_info(vuln)
-            cve = info["cve"]
-            if cve not in unique or unique[cve]["severity"] == "UNKNOWN":
-                unique[cve] = info
-        vulnerabilities = list(unique.values())
+        vulnerabilities = deduplicate(vulns)
         packages.append({"name": name, "version": version, "vulnerabilities": vulnerabilities})
 
     return {"filename": file.filename, "packages": packages, "skipped": skipped}
