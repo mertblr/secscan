@@ -22,7 +22,16 @@ def extract_info(vuln):
     severity = vuln.get("database_specific", {}).get("severity", "UNKNOWN")
     summary = vuln.get("summary", "")
 
-    return {"cve": cve, "severity": severity, "summary": summary}
+    fixed_versions = []
+    for affected in vuln.get("affected", []):
+        for r in affected.get("ranges", []):
+            if r.get("type") != "ECOSYSTEM":
+                continue
+            for event in r.get("events", []):
+                if "fixed" in event:
+                    fixed_versions.append(event["fixed"])
+
+    return {"cve": cve, "severity": severity, "summary": summary, "fixed_in": fixed_versions}
 
 
 
@@ -43,9 +52,13 @@ async def scan(file: UploadFile):
     lines = text.splitlines()
 
     packages = []
+    skipped = []
     for line in lines:
         line = line.strip()
-        if not line:
+        if not line or line.startswith("#"):
+            continue
+        if "==" not in line:
+            skipped.append(line)
             continue
         name, version = line.split("==")
         vulns = await query_osv(name, version)
@@ -58,4 +71,4 @@ async def scan(file: UploadFile):
         vulnerabilities = list(unique.values())
         packages.append({"name": name, "version": version, "vulnerabilities": vulnerabilities})
 
-    return {"filename": file.filename, "packages": packages}
+    return {"filename": file.filename, "packages": packages, "skipped": skipped}
