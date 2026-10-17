@@ -4,6 +4,7 @@ from fastapi import FastAPI, UploadFile
 from fastapi.responses import FileResponse
 
 OSV_URL = "https://api.osv.dev/v1/query"
+SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3, "UNKNOWN": 4}
 
 app = FastAPI()
 
@@ -35,6 +36,9 @@ def extract_info(vuln):
 
     return {"cve": cve, "severity": severity, "summary": summary, "fixed_in": fixed_versions}
 
+def severity_rank(vuln):
+    return SEVERITY_ORDER.get(vuln["severity"], 5)
+
 
 def deduplicate(vulns):
     unique = {}
@@ -43,7 +47,7 @@ def deduplicate(vulns):
         cve = info["cve"]
         if cve not in unique or unique[cve]["severity"] == "UNKNOWN":
             unique[cve] = info
-    return list(unique.values())
+    return sorted(unique.values(), key=severity_rank)
 
 
 def recommend_version(current, vulnerabilities):
