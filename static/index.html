@@ -11,12 +11,63 @@
   <input type="file" id="file-input">
   <button id="scan-button">Scan</button>
 
-    <pre id="result"></pre>
+  <pre id="result"></pre>
 
-    <script>
+  <!-- YENİ: Sonuç tablosu. "hidden" = başta gizli -->
+  <table id="result-table" hidden>
+    <thead>
+      <tr>
+        <th>Package</th>
+        <th>Version</th>
+        <th>Vulnerabilities</th>
+        <th>Recommended</th>
+      </tr>
+    </thead>
+    <tbody id="result-body"></tbody>
+  </table>
+
+  <script>
     const fileInput = document.getElementById("file-input");
     const scanButton = document.getElementById("scan-button");
     const resultBox = document.getElementById("result");
+
+    // YENİ: Bir satıra hücre ekleyen yardımcı fonksiyon
+    function addCell(row, text) {
+      const cell = document.createElement("td");
+      cell.textContent = text;
+      row.appendChild(cell);
+      return cell;
+    }
+
+    // YENİ: Sonucu tabloya çeviren fonksiyon
+    function renderTable(data) {
+      const tableBody = document.getElementById("result-body");
+      tableBody.innerHTML = "";
+
+      for (const pkg of data.packages) {
+        const row = document.createElement("tr");
+
+        addCell(row, pkg.name);
+        addCell(row, pkg.version);
+
+        const vulnCell = addCell(row, "");
+        if (pkg.vulnerabilities.length === 0) {
+          vulnCell.textContent = "✅ No known vulnerabilities";
+        } else {
+          for (const vuln of pkg.vulnerabilities) {
+            const line = document.createElement("div");
+            line.textContent = `${vuln.severity}: ${vuln.cve}`;
+            vulnCell.appendChild(line);
+          }
+        }
+
+        addCell(row, pkg.recommended_version ?? "–");
+
+        tableBody.appendChild(row);
+      }
+
+      document.getElementById("result-table").hidden = false;
+    }
 
     scanButton.addEventListener("click", async () => {
       const file = fileInput.files[0];
@@ -31,8 +82,9 @@
       resultBox.textContent = "Scanning...";
       const response = await fetch("/scan", { method: "POST", body: formData });
       const data = await response.json();
-      resultBox.textContent = JSON.stringify(data, null, 2);
+      resultBox.textContent = "";   // DEĞİŞTİ: "Scanning..." yazısını sil
+      renderTable(data);            // DEĞİŞTİ: JSON yerine tablo göster
     });
-</script>
+  </script>
 </body>
 </html>
