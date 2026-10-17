@@ -3,6 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <title>SecScan</title>
+
+    <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 16px;
+      color: #1f2937;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    .severity {
+      width: fit-content;
+      padding: 2px 8px;
+      margin: 2px 0;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .severity-critical { background: #7f1d1d; color: white; }
+    .severity-high     { background: #fee2e2; color: #991b1b; }
+    .severity-moderate { background: #fef3c7; color: #92400e; }
+    .severity-low      { background: #e0f2fe; color: #075985; }
+    .severity-unknown  { background: #e5e7eb; color: #374151; }
+  </style>
 </head>
 <body>
   <h1>SecScan</h1>
@@ -57,6 +93,7 @@
           for (const vuln of pkg.vulnerabilities) {
             const line = document.createElement("div");
             line.textContent = `${vuln.severity}: ${vuln.cve}`;
+            line.classList.add("severity", "severity-" + vuln.severity.toLowerCase());
             vulnCell.appendChild(line);
           }
         }
