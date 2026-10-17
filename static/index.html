@@ -38,6 +38,10 @@
     .severity-moderate { background: #fef3c7; color: #92400e; }
     .severity-low      { background: #e0f2fe; color: #075985; }
     .severity-unknown  { background: #e5e7eb; color: #374151; }
+
+    #skipped {
+      color: #92400e;
+    }
   </style>
 </head>
 <body>
@@ -61,6 +65,7 @@
     </thead>
     <tbody id="result-body"></tbody>
   </table>
+  <p id="skipped"></p>
 
   <script>
     const fileInput = document.getElementById("file-input");
@@ -101,6 +106,13 @@
         addCell(row, pkg.recommended_version ?? "–");
 
         tableBody.appendChild(row);
+      }
+      
+      const skippedBox = document.getElementById("skipped");
+      if (data.skipped.length > 0) {
+        skippedBox.textContent = "⚠️ Skipped (no exact version): " + data.skipped.join(", ");
+      } else {
+        skippedBox.textContent = "";
       }
 
       document.getElementById("result-table").hidden = false;
