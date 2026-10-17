@@ -1,3 +1,4 @@
+from packaging.version import Version
 import httpx
 from fastapi import FastAPI, UploadFile
 
@@ -44,6 +45,22 @@ def deduplicate(vulns):
     return list(unique.values())
 
 
+def recommend_version(current, vulnerabilities):
+    current_v = Version(current)
+    needed = []
+    for vuln in vulnerabilities:
+        candidates = []
+        for fixed in vuln["fixed_in"]:
+            fixed_v = Version(fixed)
+            if fixed_v > current_v:
+                candidates.append(fixed_v)
+        if candidates:
+            needed.append(min(candidates))
+    if not needed:
+        return None
+    return str(max(needed))
+
+
 
 @app.get("/")
 def root():
@@ -73,6 +90,7 @@ async def scan(file: UploadFile):
         name, version = line.split("==")
         vulns = await query_osv(name, version)
         vulnerabilities = deduplicate(vulns)
-        packages.append({"name": name, "version": version, "vulnerabilities": vulnerabilities})
+        recommended = recommend_version(version, vulnerabilities)
+        packages.append({"name": name, "version": version, "recommended_version": recommended, "vulnerabilities": vulnerabilities})
 
     return {"filename": file.filename, "packages": packages, "skipped": skipped}
