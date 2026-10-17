@@ -1,6 +1,7 @@
 from packaging.version import Version
 import httpx
 from fastapi import FastAPI, UploadFile
+from fastapi.responses import FileResponse
 
 OSV_URL = "https://api.osv.dev/v1/query"
 
@@ -64,7 +65,7 @@ def recommend_version(current, vulnerabilities):
 
 @app.get("/")
 def root():
-    return {"message": "SecScan läuft"}
+    return FileResponse("static/index.html")
 
 
 @app.get("/health")
