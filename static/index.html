@@ -66,6 +66,8 @@
     <tbody id="result-body"></tbody>
   </table>
   <p id="skipped"></p>
+  <h2>Recent scans</h2>
+  <ul id="history"></ul>
 
   <script>
     const fileInput = document.getElementById("file-input");
@@ -118,6 +120,33 @@
       document.getElementById("result-table").hidden = false;
     }
 
+    async function loadHistory() {
+      const response = await fetch("/scans");
+      const scans = await response.json();
+
+      const list = document.getElementById("history");
+      list.innerHTML = "";
+
+      for (const scan of scans) {
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = "#";
+        link.textContent = `${scan.filename} – ${scan.created_at.replace("T", " ")}`;
+
+        link.addEventListener("click", async (event) => {
+          event.preventDefault();
+          const res = await fetch(`/scans/${scan.id}`);
+          const data = await res.json();
+          renderTable(data.result);
+        });
+
+        item.appendChild(link);
+        list.appendChild(item);
+      }
+    }
+
+    loadHistory();
+
     scanButton.addEventListener("click", async () => {
       const file = fileInput.files[0];
       if (!file) {
@@ -132,7 +161,8 @@
       const response = await fetch("/scan", { method: "POST", body: formData });
       const data = await response.json();
       resultBox.textContent = "";   
-      renderTable(data);            
+      renderTable(data);         
+      loadHistory();   
     });
   </script>
 </body>
