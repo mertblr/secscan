@@ -53,7 +53,7 @@
 
   <pre id="result"></pre>
 
-  <!-- YENİ: Sonuç tablosu. "hidden" = başta gizli -->
+ 
   <table id="result-table" hidden>
     <thead>
       <tr>
@@ -72,7 +72,7 @@
     const scanButton = document.getElementById("scan-button");
     const resultBox = document.getElementById("result");
 
-    // YENİ: Bir satıra hücre ekleyen yardımcı fonksiyon
+
     function addCell(row, text) {
       const cell = document.createElement("td");
       cell.textContent = text;
@@ -80,7 +80,7 @@
       return cell;
     }
 
-    // YENİ: Sonucu tabloya çeviren fonksiyon
+
     function renderTable(data) {
       const tableBody = document.getElementById("result-body");
       tableBody.innerHTML = "";
@@ -131,8 +131,8 @@
       resultBox.textContent = "Scanning...";
       const response = await fetch("/scan", { method: "POST", body: formData });
       const data = await response.json();
-      resultBox.textContent = "";   // DEĞİŞTİ: "Scanning..." yazısını sil
-      renderTable(data);            // DEĞİŞTİ: JSON yerine tablo göster
+      resultBox.textContent = "";   
+      renderTable(data);            
     });
   </script>
 </body>

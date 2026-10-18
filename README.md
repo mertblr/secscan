@@ -16,6 +16,7 @@ Almost every software project depends on third-party libraries. Older versions o
 - Show the CVE ID, severity and a short summary for each vulnerability
 - Remove duplicates when the same vulnerability is reported by multiple sources (e.g. GitHub and PyPA)
 - Skip comments and report unpinned packages (e.g. `django` or `requests>=2.25.0`) instead of silently ignoring them
+- Recommend the lowest version that fixes all known vulnerabilities
 
 ## Example
 
@@ -90,7 +91,7 @@ curl -F "file=@test-requirements.txt" http://127.0.0.1:8000/scan
 ## Roadmap
 
 - [x] Scan `requirements.txt` for known vulnerabilities
-- [ ] Show the version that fixes each vulnerability
+- [x] Show the version that fixes each vulnerability
 - [ ] Website security header and TLS check
 - [ ] AI-generated explanations and fix suggestions
 - [ ] Simple web frontend
