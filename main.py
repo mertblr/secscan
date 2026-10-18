@@ -4,7 +4,10 @@ from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
+import asyncio
+import socket
+import ssl
 
 OSV_URL = "https://api.osv.dev/v1/query"
 DB_PATH = "secscan.db"
@@ -95,6 +98,32 @@ def recommend_version(current, vulnerabilities):
     return str(max(needed))
 
 
+def get_tls_info(hostname):
+    context = ssl.create_default_context()
+    try:
+        # Force IPv4 like in check_website
+        with socket.create_connection((hostname, 443), timeout=10, source_address=("0.0.0.0", 0)) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as tls:
+                cert = tls.getpeercert()
+                tls_version = tls.version()
+    except ssl.SSLCertVerificationError as error:
+        return {"valid": False, "error": error.verify_message}
+    except OSError as error:
+        return {"valid": False, "error": f"{type(error).__name__} {error}"}
+
+    expires = datetime.fromtimestamp(ssl.cert_time_to_seconds(cert["notAfter"]), tz=timezone.utc)
+    days_left = (expires - datetime.now(timezone.utc)).days
+    issuer = dict(item[0] for item in cert["issuer"])
+
+    return {
+        "valid": True,
+        "issuer": issuer.get("organizationName"),
+        "expires": expires.date().isoformat(),
+        "days_left": days_left,
+        "tls_version": tls_version,
+    }
+
+
 
 @app.get("/")
 def root():
@@ -164,15 +193,29 @@ def get_scan(scan_id: int):
 async def check_website(url: str):
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
-        
-        
+
+    # 1. Check the TLS certificate first
+    tls_info = None
+    if url.startswith("https://"):
+        hostname = httpx.URL(url).host
+        tls_info = await asyncio.to_thread(get_tls_info, hostname)
+
+    # 2. If the certificate is invalid, still read the headers without verification
+    verify = tls_info is None or tls_info["valid"]
+
     # Force IPv4: IPv6 does not work reliably in WSL
-    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0", verify=verify)
     try:
         async with httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=10) as client:
             response = await client.get(url)
     except httpx.HTTPError as error:
         raise HTTPException(status_code=400, detail=f"Could not reach website: {type(error).__name__} {error}")
+
+    https_used = response.url.scheme == "https"
+
+    # 3. The site may have redirected from http to https
+    if https_used and tls_info is None:
+        tls_info = await asyncio.to_thread(get_tls_info, response.url.host)
 
     results = []
     for header, description in SECURITY_HEADERS.items():
@@ -184,10 +227,10 @@ async def check_website(url: str):
             "description": description,
         })
 
-    https_used = response.url.scheme == "https"
     return {
         "url": str(response.url),
         "status_code": response.status_code,
         "https": https_used,
+        "tls": tls_info,
         "headers": results,
     }
