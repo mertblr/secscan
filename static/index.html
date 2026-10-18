@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>SecScan</title>
-
-    <style>
+  <style>
     body {
       font-family: system-ui, sans-serif;
       max-width: 900px;
@@ -38,7 +37,6 @@
     .severity-moderate { background: #fef3c7; color: #92400e; }
     .severity-low      { background: #e0f2fe; color: #075985; }
     .severity-unknown  { background: #e5e7eb; color: #374151; }
-
     #skipped {
       color: #92400e;
     }
@@ -46,14 +44,13 @@
 </head>
 <body>
   <h1>SecScan</h1>
-  <p>Upload a requirements.txt file to check for known vulnerabilities.</p>
 
+  <h2>Dependency scan</h2>
+  <p>Upload a requirements.txt file to check for known vulnerabilities.</p>
   <input type="file" id="file-input">
   <button id="scan-button">Scan</button>
-
   <pre id="result"></pre>
 
- 
   <table id="result-table" hidden>
     <thead>
       <tr>
@@ -66,6 +63,24 @@
     <tbody id="result-body"></tbody>
   </table>
   <p id="skipped"></p>
+
+  <h2>Website check</h2>
+  <p>Enter a website address to check its security headers.</p>
+  <input type="text" id="url-input" placeholder="https://example.com">
+  <button id="website-button">Check</button>
+  <p id="website-status"></p>
+
+  <table id="website-table" hidden>
+    <thead>
+      <tr>
+        <th>Header</th>
+        <th>Status</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody id="website-body"></tbody>
+  </table>
+
   <h2>Recent scans</h2>
   <ul id="history"></ul>
 
@@ -73,7 +88,9 @@
     const fileInput = document.getElementById("file-input");
     const scanButton = document.getElementById("scan-button");
     const resultBox = document.getElementById("result");
-
+    const urlInput = document.getElementById("url-input");
+    const websiteButton = document.getElementById("website-button");
+    const websiteStatus = document.getElementById("website-status");
 
     function addCell(row, text) {
       const cell = document.createElement("td");
@@ -81,7 +98,6 @@
       row.appendChild(cell);
       return cell;
     }
-
 
     function renderTable(data) {
       const tableBody = document.getElementById("result-body");
@@ -109,7 +125,7 @@
 
         tableBody.appendChild(row);
       }
-      
+
       const skippedBox = document.getElementById("skipped");
       if (data.skipped.length > 0) {
         skippedBox.textContent = "⚠️ Skipped (no exact version): " + data.skipped.join(", ");
@@ -118,6 +134,21 @@
       }
 
       document.getElementById("result-table").hidden = false;
+    }
+
+    function renderWebsite(data) {
+      const tableBody = document.getElementById("website-body");
+      tableBody.innerHTML = "";
+
+      for (const h of data.headers) {
+        const row = document.createElement("tr");
+        addCell(row, h.header);
+        addCell(row, h.present ? "✅ Present" : "❌ Missing");
+        addCell(row, h.description);
+        tableBody.appendChild(row);
+      }
+
+      document.getElementById("website-table").hidden = false;
     }
 
     async function loadHistory() {
@@ -145,8 +176,6 @@
       }
     }
 
-    loadHistory();
-
     scanButton.addEventListener("click", async () => {
       const file = fileInput.files[0];
       if (!file) {
@@ -160,10 +189,32 @@
       resultBox.textContent = "Scanning...";
       const response = await fetch("/scan", { method: "POST", body: formData });
       const data = await response.json();
-      resultBox.textContent = "";   
-      renderTable(data);         
-      loadHistory();   
+      resultBox.textContent = "";
+      renderTable(data);
+      loadHistory();
     });
+
+    websiteButton.addEventListener("click", async () => {
+      const url = urlInput.value.trim();
+      if (!url) {
+        websiteStatus.textContent = "Please enter a URL.";
+        return;
+      }
+
+      websiteStatus.textContent = "Checking...";
+      const response = await fetch(`/website?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        websiteStatus.textContent = data.detail;
+        return;
+      }
+
+      websiteStatus.textContent = data.https ? "🔒 HTTPS is used" : "⚠️ HTTPS is NOT used";
+      renderWebsite(data);
+    });
+
+    loadHistory();
   </script>
 </body>
 </html>
