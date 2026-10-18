@@ -123,3 +123,16 @@ async def scan(file: UploadFile):
     result = {"filename": file.filename, "packages": packages, "skipped": skipped}
     save_scan(file.filename, result)
     return result
+
+
+
+@app.get("/scans")
+def list_scans():
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute("SELECT id, filename, created_at FROM scans ORDER BY id DESC").fetchall()
+    conn.close()
+
+    scans = []
+    for row in rows:
+        scans.append({"id": row[0], "filename": row[1], "created_at": row[2]})
+    return scans
