@@ -9,6 +9,13 @@ from datetime import datetime
 OSV_URL = "https://api.osv.dev/v1/query"
 DB_PATH = "secscan.db"
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3, "UNKNOWN": 4}
+SECURITY_HEADERS = {
+    "strict-transport-security": "Forces browsers to use HTTPS",
+    "content-security-policy": "Restricts which scripts can run (protects against XSS)",
+    "x-frame-options": "Prevents the site from being embedded in other sites (clickjacking)",
+    "x-content-type-options": "Prevents browsers from guessing file types",
+    "referrer-policy": "Controls how much information is sent to other sites",
+}
 
 app = FastAPI()
 
@@ -151,3 +158,36 @@ def get_scan(scan_id: int):
         raise HTTPException(status_code=404, detail="Scan not found")
 
     return {"id": row[0], "filename": row[1], "created_at": row[2], "result": json.loads(row[3])}
+
+
+@app.get("/website")
+async def check_website(url: str):
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+        
+        
+    # Force IPv4: IPv6 does not work reliably in WSL
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
+    try:
+        async with httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=10) as client:
+            response = await client.get(url)
+    except httpx.HTTPError as error:
+        raise HTTPException(status_code=400, detail=f"Could not reach website: {type(error).__name__} {error}")
+
+    results = []
+    for header, description in SECURITY_HEADERS.items():
+        value = response.headers.get(header)
+        results.append({
+            "header": header,
+            "present": value is not None,
+            "value": value,
+            "description": description,
+        })
+
+    https_used = response.url.scheme == "https"
+    return {
+        "url": str(response.url),
+        "status_code": response.status_code,
+        "https": https_used,
+        "headers": results,
+    }
