@@ -1,6 +1,6 @@
 from packaging.version import Version
 import httpx
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import json
 import sqlite3
@@ -136,3 +136,18 @@ def list_scans():
     for row in rows:
         scans.append({"id": row[0], "filename": row[1], "created_at": row[2]})
     return scans
+
+
+@app.get("/scans/{scan_id}")
+def get_scan(scan_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        "SELECT id, filename, created_at, result FROM scans WHERE id = ?",
+        (scan_id,),
+    ).fetchone()
+    conn.close()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    return {"id": row[0], "filename": row[1], "created_at": row[2], "result": json.loads(row[3])}
