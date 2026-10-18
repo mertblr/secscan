@@ -2,11 +2,33 @@ from packaging.version import Version
 import httpx
 from fastapi import FastAPI, UploadFile
 from fastapi.responses import FileResponse
+import json
+import sqlite3
+from datetime import datetime
 
 OSV_URL = "https://api.osv.dev/v1/query"
+DB_PATH = "secscan.db"
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3, "UNKNOWN": 4}
 
 app = FastAPI()
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("CREATE TABLE IF NOT EXISTS scans (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT NOT NULL, created_at TEXT NOT NULL, result TEXT NOT NULL)")
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
+def save_scan(filename, result):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "INSERT INTO scans (filename, created_at, result) VALUES (?, ?, ?)",
+        (filename, datetime.now().isoformat(timespec="seconds"), json.dumps(result)),
+    )
+    conn.commit()
+    conn.close()
 
 
 async def query_osv(name, version):
@@ -98,4 +120,6 @@ async def scan(file: UploadFile):
         recommended = recommend_version(version, vulnerabilities)
         packages.append({"name": name, "version": version, "recommended_version": recommended, "vulnerabilities": vulnerabilities})
 
-    return {"filename": file.filename, "packages": packages, "skipped": skipped}
+    result = {"filename": file.filename, "packages": packages, "skipped": skipped}
+    save_scan(file.filename, result)
+    return result
