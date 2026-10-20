@@ -1,4 +1,5 @@
 # SecScan
+![CI](https://github.com/mertblr/secscan/actions/workflows/ci.yml/badge.svg)
 
 SecScan checks the dependencies of a Python project for known security vulnerabilities. Upload a `requirements.txt` file and SecScan tells you which packages have known vulnerabilities (CVEs) and how severe they are.
 
@@ -21,6 +22,7 @@ Almost every software project depends on third-party libraries. Older versions o
 - Save scan history in a SQLite database
 - Check websites for missing security headers (HSTS, CSP, X-Frame-Options, ...) and HTTPS
 - Check TLS certificates (validity, issuer, expiry date, TLS version)
+- AI-generated plain-language explanations for each vulnerability (Claude API), with prompt injection protection
 
 ## Example
 
@@ -97,7 +99,7 @@ curl -F "file=@test-requirements.txt" http://127.0.0.1:8000/scan
 - [x] Scan `requirements.txt` for known vulnerabilities
 - [x] Show the version that fixes each vulnerability
 - [x] Website security header and TLS check
-- [ ] AI-generated explanations and fix suggestions
+- [x] AI-generated explanations and fix suggestions
 - [x] Simple web frontend
 - [ ] Docker, automated tests and CI/CD (GitHub Actions)
 - [ ] Deployment
