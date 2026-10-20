@@ -40,6 +40,15 @@
     #skipped {
       color: #92400e;
     }
+    .tls-box {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-top: 12px;
+    }
+    .tls-ok      { background: #ecfdf5; }
+    .tls-warning { background: #fffbeb; }
+    .tls-error   { background: #fef2f2; }
   </style>
 </head>
 <body>
@@ -69,6 +78,7 @@
   <input type="text" id="url-input" placeholder="https://example.com">
   <button id="website-button">Check</button>
   <p id="website-status"></p>
+  <div id="tls-info"></div>
 
   <table id="website-table" hidden>
     <thead>
@@ -151,6 +161,39 @@
       document.getElementById("website-table").hidden = false;
     }
 
+    function renderTls(tls) {
+      const box = document.getElementById("tls-info");
+      box.innerHTML = "";
+      box.className = "";
+
+      if (tls === null) {
+        return;
+      }
+
+      box.classList.add("tls-box");
+      const lines = [];
+
+      if (!tls.valid) {
+        box.classList.add("tls-error");
+        lines.push("🔴 Invalid certificate: " + tls.error);
+      } else {
+        const expiresSoon = tls.days_left < 30;
+        box.classList.add(expiresSoon ? "tls-warning" : "tls-ok");
+        lines.push(`✅ Valid certificate issued by ${tls.issuer}`);
+        lines.push(`Expires: ${tls.expires} (${tls.days_left} days left)`);
+        lines.push(`TLS version: ${tls.tls_version}`);
+        if (expiresSoon) {
+          lines.push("🟡 The certificate expires in less than 30 days");
+        }
+      }
+
+      for (const text of lines) {
+        const line = document.createElement("div");
+        line.textContent = text;
+        box.appendChild(line);
+      }
+    }
+
     async function loadHistory() {
       const response = await fetch("/scans");
       const scans = await response.json();
@@ -207,11 +250,13 @@
 
       if (!response.ok) {
         websiteStatus.textContent = data.detail;
+        renderTls(null);
         return;
       }
 
       websiteStatus.textContent = data.https ? "🔒 HTTPS is used" : "⚠️ HTTPS is NOT used";
       renderWebsite(data);
+      renderTls(data.tls);
     });
 
     loadHistory();
