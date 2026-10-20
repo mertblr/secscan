@@ -91,7 +91,7 @@ def save_scan(filename, result):
     conn = get_connection()
     conn.execute(
         sql("INSERT INTO scans (filename, created_at, result) VALUES (?, ?, ?)"),
-        (filename, datetime.now().isoformat(timespec="seconds"), json.dumps(result)),
+        (filename, datetime.now(timezone.utc).isoformat(timespec="seconds"), json.dumps(result)),
     )
     conn.commit()
     conn.close()
