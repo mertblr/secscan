@@ -9,4 +9,6 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["fastapi", "run", "main.py", "--host", "0.0.0.0", "--port", "8000"]
+ENV FORWARDED_ALLOW_IPS="*"
+
+CMD ["sh", "-c", "fastapi run main.py --host 0.0.0.0 --port ${PORT:-8000}"]
