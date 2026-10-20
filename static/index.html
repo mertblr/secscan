@@ -49,6 +49,23 @@
     .tls-ok      { background: #ecfdf5; }
     .tls-warning { background: #fffbeb; }
     .tls-error   { background: #fef2f2; }
+
+    .explain-button {
+      font-size: 0.8em;
+      margin: 2px 0 6px;
+      cursor: pointer;
+    }
+    .explanation {
+      white-space: pre-line;
+      font-size: 0.9em;
+      background: #f9fafb;
+      border-left: 3px solid #9ca3af;
+      padding: 6px 10px;
+      margin-bottom: 8px;
+    }
+    .explanation:empty {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -109,6 +126,34 @@
       return cell;
     }
 
+    async function explainVulnerability(pkg, vuln, button, box) {
+      button.disabled = true;
+      box.textContent = "Thinking...";
+
+      const response = await fetch("/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          package: pkg.name,
+          version: pkg.version,
+          cve: vuln.cve,
+          severity: vuln.severity,
+          summary: vuln.summary,
+          fixed_in: vuln.fixed_in,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        box.textContent = "⚠️ " + data.detail;
+        button.disabled = false;
+        return;
+      }
+
+      box.textContent = data.explanation;
+      button.remove();
+    }
+
     function renderTable(data) {
       const tableBody = document.getElementById("result-body");
       tableBody.innerHTML = "";
@@ -128,6 +173,19 @@
             line.textContent = `${vuln.severity}: ${vuln.cve}`;
             line.classList.add("severity", "severity-" + vuln.severity.toLowerCase());
             vulnCell.appendChild(line);
+
+            const explainButton = document.createElement("button");
+            explainButton.textContent = "Explain";
+            explainButton.classList.add("explain-button");
+            vulnCell.appendChild(explainButton);
+
+            const explanationBox = document.createElement("div");
+            explanationBox.classList.add("explanation");
+            vulnCell.appendChild(explanationBox);
+
+            explainButton.addEventListener("click", () =>
+              explainVulnerability(pkg, vuln, explainButton, explanationBox)
+            );
           }
         }
 
