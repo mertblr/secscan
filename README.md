@@ -17,6 +17,10 @@ Almost every software project depends on third-party libraries. Older versions o
 - Remove duplicates when the same vulnerability is reported by multiple sources (e.g. GitHub and PyPA)
 - Skip comments and report unpinned packages (e.g. `django` or `requests>=2.25.0`) instead of silently ignoring them
 - Recommend the lowest version that fixes all known vulnerabilities
+- Web interface with color-coded severity
+- Save scan history in a SQLite database
+- Check websites for missing security headers (HSTS, CSP, X-Frame-Options, ...) and HTTPS
+- Check TLS certificates (validity, issuer, expiry date, TLS version)
 
 ## Example
 
@@ -92,8 +96,8 @@ curl -F "file=@test-requirements.txt" http://127.0.0.1:8000/scan
 
 - [x] Scan `requirements.txt` for known vulnerabilities
 - [x] Show the version that fixes each vulnerability
-- [ ] Website security header and TLS check
+- [x] Website security header and TLS check
 - [ ] AI-generated explanations and fix suggestions
-- [ ] Simple web frontend
+- [x] Simple web frontend
 - [ ] Docker, automated tests and CI/CD (GitHub Actions)
 - [ ] Deployment
