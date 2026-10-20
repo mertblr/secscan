@@ -1,4 +1,6 @@
-from main import deduplicate, is_public_host, recommend_version
+import pytest
+from fastapi import HTTPException
+from main import EXPLAIN_PER_IP_PER_HOUR, check_rate_limit, deduplicate, is_public_host, recommend_version
 
 
 def test_recommend_version_picks_highest_needed_fix():
@@ -49,4 +51,15 @@ def test_is_public_host_blocks_internal_addresses():
 
 def test_is_public_host_allows_public_ip():
     assert is_public_host("8.8.8.8") is True
+
+
+
+def test_rate_limit_blocks_after_limit():
+    ip = "203.0.113.7"
+    for _ in range(EXPLAIN_PER_IP_PER_HOUR):
+        check_rate_limit(ip)
+
+    with pytest.raises(HTTPException) as error:
+        check_rate_limit(ip)
+    assert error.value.status_code == 429
 
