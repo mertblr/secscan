@@ -3,7 +3,8 @@
 
 SecScan checks the dependencies of a Python project for known security vulnerabilities. Upload a `requirements.txt` file and SecScan tells you which packages have known vulnerabilities (CVEs) and how severe they are.
 
-> 🚧 Work in progress – this project is under active development.
+🌐 **Live demo:** https://secscan-t8t0.onrender.com
+*(Free hosting: the first request may take up to a minute while the server wakes up.)*
 
 ## Why?
 
@@ -101,5 +102,5 @@ curl -F "file=@test-requirements.txt" http://127.0.0.1:8000/scan
 - [x] Website security header and TLS check
 - [x] AI-generated explanations and fix suggestions
 - [x] Simple web frontend
-- [ ] Docker, automated tests and CI/CD (GitHub Actions)
-- [ ] Deployment
+- [x] Docker, automated tests and CI/CD (GitHub Actions)
+- [x] Deployment
