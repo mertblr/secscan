@@ -1,3 +1,4 @@
+import ipaddress
 import os
 
 import anthropic
@@ -150,6 +151,25 @@ def get_tls_info(hostname):
         "tls_version": tls_version,
     }
 
+def is_public_host(hostname):
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        return False
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0].split("%")[0])
+        if not ip.is_global:
+            return False
+    return True
+
+
+async def ensure_public_url(url):
+    parsed = httpx.URL(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http and https URLs are allowed")
+    if not await asyncio.to_thread(is_public_host, parsed.host):
+        raise HTTPException(status_code=400, detail="URL must point to a public website")
+
 
 
 @app.get("/")
@@ -221,11 +241,13 @@ async def check_website(url: str):
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
+    # SSRF protection: only allow public websites
+    await ensure_public_url(url)
+
     # 1. Check the TLS certificate first
     tls_info = None
     if url.startswith("https://"):
-        hostname = httpx.URL(url).host
-        tls_info = await asyncio.to_thread(get_tls_info, hostname)
+        tls_info = await asyncio.to_thread(get_tls_info, httpx.URL(url).host)
 
     # 2. If the certificate is invalid, still read the headers without verification
     verify = tls_info is None or tls_info["valid"]
@@ -233,8 +255,18 @@ async def check_website(url: str):
     # Force IPv4: IPv6 does not work reliably in WSL
     transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0", verify=verify)
     try:
-        async with httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=10) as client:
+        async with httpx.AsyncClient(transport=transport, timeout=10) as client:
             response = await client.get(url)
+
+            # Follow redirects manually, so every target is checked (SSRF)
+            redirects = 0
+            while response.is_redirect:
+                redirects += 1
+                if redirects > 5:
+                    raise HTTPException(status_code=400, detail="Too many redirects")
+                next_url = str(response.next_request.url)
+                await ensure_public_url(next_url)
+                response = await client.get(next_url)
     except httpx.HTTPError as error:
         raise HTTPException(status_code=400, detail=f"Could not reach website: {type(error).__name__} {error}")
 

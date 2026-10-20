@@ -1,4 +1,4 @@
-from main import deduplicate, recommend_version
+from main import deduplicate, is_public_host, recommend_version
 
 
 def test_recommend_version_picks_highest_needed_fix():
@@ -36,3 +36,17 @@ def test_deduplicate_sorts_by_severity():
     ]
     result = deduplicate(vulns)
     assert [v["severity"] for v in result] == ["HIGH", "LOW"]
+
+
+
+def test_is_public_host_blocks_internal_addresses():
+    assert is_public_host("127.0.0.1") is False
+    assert is_public_host("localhost") is False
+    assert is_public_host("192.168.1.1") is False
+    assert is_public_host("10.0.0.5") is False
+    assert is_public_host("169.254.169.254") is False
+
+
+def test_is_public_host_allows_public_ip():
+    assert is_public_host("8.8.8.8") is True
+
