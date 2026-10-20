@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import asyncio
 import socket
 import ssl
+import psycopg
 
 OSV_URL = "https://api.osv.dev/v1/query"
 DB_PATH = "secscan.db"
@@ -26,6 +27,7 @@ SECURITY_HEADERS = {
     "referrer-policy": "Controls how much information is sent to other sites",
 }
 load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 AI_MODEL = "claude-haiku-5-5"
 
@@ -50,19 +52,35 @@ class ExplainRequest(BaseModel):
     summary: str
     fixed_in: list[str]
 
+
+def get_connection():
+    if DATABASE_URL:
+        return psycopg.connect(DATABASE_URL)
+    return sqlite3.connect(DB_PATH)
+
+
+def sql(query):
+    # SQLite uses ? as placeholder, PostgreSQL uses %s
+    if DATABASE_URL:
+        return query.replace("?", "%s")
+    return query
+
+
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("CREATE TABLE IF NOT EXISTS scans (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT NOT NULL, created_at TEXT NOT NULL, result TEXT NOT NULL)")
+    id_column = "SERIAL PRIMARY KEY" if DATABASE_URL else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    conn = get_connection()
+    conn.execute(f"CREATE TABLE IF NOT EXISTS scans (id {id_column}, filename TEXT NOT NULL, created_at TEXT NOT NULL, result TEXT NOT NULL)")
     conn.commit()
     conn.close()
 
 
 init_db()
 
+
 def save_scan(filename, result):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     conn.execute(
-        "INSERT INTO scans (filename, created_at, result) VALUES (?, ?, ?)",
+        sql("INSERT INTO scans (filename, created_at, result) VALUES (?, ?, ?)"),
         (filename, datetime.now().isoformat(timespec="seconds"), json.dumps(result)),
     )
     conn.commit()
@@ -211,8 +229,8 @@ async def scan(file: UploadFile):
 
 @app.get("/scans")
 def list_scans():
-    conn = sqlite3.connect(DB_PATH)
-    rows = conn.execute("SELECT id, filename, created_at FROM scans ORDER BY id DESC").fetchall()
+    conn = get_connection()
+    rows = conn.execute(sql("SELECT id, filename, created_at FROM scans ORDER BY id DESC")).fetchall()
     conn.close()
 
     scans = []
@@ -223,9 +241,9 @@ def list_scans():
 
 @app.get("/scans/{scan_id}")
 def get_scan(scan_id: int):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     row = conn.execute(
-        "SELECT id, filename, created_at, result FROM scans WHERE id = ?",
+        sql("SELECT id, filename, created_at, result FROM scans WHERE id = ?"),
         (scan_id,),
     ).fetchone()
     conn.close()
